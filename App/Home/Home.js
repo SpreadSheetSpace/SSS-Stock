@@ -9,6 +9,10 @@ var sssServer = "https://jarvis.spreadsheetspace.net/";
 var strToday;
 
 var stockMap;
+var platform;
+
+var selectedTicker;
+var nameSelectedTicker;
 
 (function () {
     "use strict";
@@ -17,6 +21,10 @@ var stockMap;
         $(document).ready(function () {
             app.initialize();
 
+            selectedTicker = "";
+            nameSelectedTicker = "";
+
+            platform = navigator.platform;
             language = Office.context.displayLanguage;
             setHtmlLanguage();
 
@@ -152,24 +160,46 @@ var stockMap;
         }
 
         var keys = Object.keys(stockMap).sort();
+
         var div = "";
-        if (language == "it-IT") {
-            div = "<input id=\"input-list-stock\" list=\"tickersName\" placeholder=\"Seleziona un titolo...\"></input>\n";
+        if (platform.toLocaleLowerCase().indexOf("mac") > -1) {
+            div = "<select id=\"select-list-stock\">\n";
+            if (language == "it-IT") {
+                div += "<option>" + "Seleziona un titolo..." + "</option>\n";
+            } else {
+                div += "<option>" + "Select a title..." + "</option>\n";
+            }
+
+            for (var key in keys) {
+                div += "<option>" + keys[key] + "</option>\n";
+            }
+            div += "</select>\n"
         } else {
-            div = "<input id=\"input-list-stock\" list=\"tickersName\" placeholder=\"Select a title...\"></input>\n";
+            if (language == "it-IT") {
+                div = "<input id=\"input-list-stock\" list=\"tickersName\" placeholder=\"Seleziona un titolo...\"></input>\n";
+            } else {
+                div = "<input id=\"input-list-stock\" list=\"tickersName\" placeholder=\"Select a title...\"></input>\n";
+            }
+            div += "<datalist id=tickersName>\n";
+            for (var key in keys) {
+                div += "<option value=\"" + keys[key] + "\"\>\n";
+            }
+            div += "</datalist>\n";
         }
-        div += "<datalist id=tickersName>\n";
-        for (var key in keys) {
-            div += "<option value=\"" + keys[key] + "\"\>\n";
-        }
-        div += "</datalist>\n";
+     
         document.getElementById("div-list-stock").innerHTML = div;
+        if (platform.toLocaleLowerCase().indexOf("mac") > -1) {
+            document.getElementById("select-list-stock").onchange = function () {
+                nameSelectedTicker = keys[this.selectedIndex - 1];
+                selectedTicker = stockMap[nameSelectedTicker];
+            }
+        }
     }
 
     function getStockData() {
         var isUpdated = false;
-        var nameSelectedTicker = $("#input-list-stock").val();
-        var selectedTicker = stockMap[nameSelectedTicker];
+        nameSelectedTicker = $("#input-list-stock").val();
+        selectedTicker = stockMap[nameSelectedTicker];
         var from = $("#from").val();
         var to = $("#to").val();
 
