@@ -198,10 +198,13 @@ var nameSelectedTicker;
 
     function getStockData() {
         var isUpdated = false;
-        nameSelectedTicker = $("#input-list-stock").val();
-        selectedTicker = stockMap[nameSelectedTicker];
         var from = $("#from").val();
         var to = $("#to").val();
+
+        if (!(platform.toLocaleLowerCase().indexOf("mac") > -1)) {
+            nameSelectedTicker = $("#input-list-stock").val();
+            selectedTicker = stockMap[nameSelectedTicker];
+        }
 
         if (nameSelectedTicker == "") {
             if (language == "it-IT") {
@@ -375,8 +378,10 @@ var nameSelectedTicker;
             var firstCellRange = sheet.getRange(cell + ":" + cell);
             var firstCell = sheet.getCell(rowIndex, columnIndex);
             var lastCell = sheet.getCell(rowIndex + rowNum - 1, columnIndex + 7 - 1);
+            var secondLastRowFirstColumn = sheet.getCell(rowIndex + rowNum - 2, columnIndex);
             var lastRowFirstColumn = sheet.getCell(rowIndex + rowNum - 1, columnIndex);
             lastCell.load('address');
+            secondLastRowFirstColumn.load('address');
             lastRowFirstColumn.load('address');
 
             return ctx.sync().then(function () {
@@ -398,6 +403,7 @@ var nameSelectedTicker;
                 range.values = value;
 
                 if (toFollow) {
+                    sheet.getRange(secondLastRowFirstColumn.address + ":" + lastCell.address).format.font.bold = false;
                     sheet.getRange(lastRowFirstColumn.address + ":" + lastCell.address).format.font.bold = true;
                 }
 
