@@ -46,6 +46,12 @@ var nameSelectedTicker;
                 updateFollowStock();
             }
 
+            if (Office.context.document.settings.get("worksheetsID") != null) {
+                compareWorksheetID()
+            }
+
+            checkWorksheetChange();
+
             setInterval(function () { updateFollowStock(); }, 15 * 60 * 1000); //15 * 60 * 1000
 
             $('#ok').click(getStockData);
@@ -126,6 +132,70 @@ var nameSelectedTicker;
         }
 
         return h + ':' + m;
+    }
+
+    function checkWorksheetIdToRemove() {
+        var listWorksheetID = [];
+        var listStockToDelete = [];
+
+        Excel.run(function (ctx) {
+            var worksheets = ctx.workbook.worksheets;
+            worksheets.load('items');
+            return ctx.sync().then(function () {
+                for (var i = 0; i < worksheets.items.length; i++) {
+                    var ws = worksheets.items[i];
+                    ws.load("id");
+                }
+                ctx.sync().then(function () {
+                    for (var i = 0; i < worksheets.items.length; i++) {
+                        var id = worksheets.items[i].id;
+                        listWorksheetID.push(id);
+                    }
+
+                    Office.context.document.settings.set('worksheetsID', JSON.stringify(listWorksheetID));
+                    Office.context.document.settings.saveAsync(function (asyncResult) {
+                        if (asyncResult.status == Office.AsyncResultStatus.Failed) {
+                            console.log("Error: " + asyncResult.error.message);
+                        } else {
+                            console.log("Settings saved");
+                        }
+                    });
+                    
+                    //var count_remove = 0;
+                    var listStockFollow_size = listStockFollow.length;
+                    for (var i = 0; i < listStockFollow_size; i++) {
+                        var stock_id = listStockFollow[i].worksheet_id;
+
+                        if (listWorksheetID.indexOf(stock_id) <= -1) {
+                            listStockToDelete.push(i);
+                        }
+                    }
+
+                    if (listStockToDelete.length > 0) {
+                        var listStock_size = listStockToDelete.length;
+
+                        for (var i=0; i < listStock_size; i++) {
+                            var id = listStockToDelete[i];
+
+                            listStockFollow.splice(id-i, 1);
+                        }
+
+                        tableStockView();
+                    }
+                })
+            });
+        }).catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
+    }
+
+    function checkWorksheetChange() {
+        Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, function () {
+            checkWorksheetIdToRemove();
+        });
     }
 
     function getListStockViews() {
@@ -247,11 +317,11 @@ var nameSelectedTicker;
                 toFollow = false;
             }
 
-            retrieveStockData(nameSelectedTicker, selectedTicker, epoch_from, epoch_to, isUpdated, toFollow, "", "", "");
+            retrieveStockData(nameSelectedTicker, selectedTicker, epoch_from, epoch_to, isUpdated, toFollow, "", "", "", "");
         }
     }
 
-    function retrieveStockData(nameTicker, ticker, epoch_from, epoch_to, isUpdated, toFollow, savedAddress, savedRowIndex, savedColumnIndex) {
+    function retrieveStockData(nameTicker, ticker, epoch_from, epoch_to, isUpdated, toFollow, savedAddress, savedRowIndex, savedColumnIndex, savedWorksheetID) {
         var objStockData = new ObjStockData(ticker, epoch_from, epoch_to);
 
         var jsonStock = JSON.stringify(objStockData);
@@ -269,7 +339,7 @@ var nameSelectedTicker;
                         app.showNotification('Error occurred. Try again later.');
                     }
                 } else {
-                    createTable(data, isUpdated, objStockData, nameTicker, toFollow, savedAddress, savedRowIndex, savedColumnIndex);
+                    createTable(data, isUpdated, objStockData, nameTicker, toFollow, savedAddress, savedRowIndex, savedColumnIndex, savedWorksheetID);
                 }
             },
             error: function (jqXHR, textStatus, errorThrown) {
@@ -282,7 +352,7 @@ var nameSelectedTicker;
         });
     }
 
-    function createTable(data, isUpdated, objStockData, nameTicker, toFollow, savedAddress, savedRowIndex, savedColumnIndex) {
+    function createTable(data, isUpdated, objStockData, nameTicker, toFollow, savedAddress, savedRowIndex, savedColumnIndex, savedWorksheetID) {
         var value = [];
         var v = [];
         v[0] = objStockData.ticker;
@@ -343,11 +413,30 @@ var nameSelectedTicker;
         }
 
         if (toFollow && isUpdated) {
-            insertData(value, savedAddress, savedRowIndex, savedColumnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
+            Excel.run(function (ctx) {
+                var selectedRange = ctx.workbook.getSelectedRange();
+                var worksheet = ctx.workbook.worksheets.getItem(savedWorksheetID)
+                worksheet.load('name');
+
+                return ctx.sync().then(function () {
+
+                    insertData(value, worksheet.name, savedWorksheetID, savedAddress, savedRowIndex, savedColumnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
+
+                });
+            }).catch(function (error) {
+                console.log("Error: " + error);
+            });
+            //insertData(value, savedWorksheetID, savedAddress, savedRowIndex, savedColumnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
+            //insertData(value, savedAddress, savedRowIndex, savedColumnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
+
         } else {
             var address, rowIndex, columnIndex;
             Excel.run(function (ctx) {
                 var selectedRange = ctx.workbook.getSelectedRange();
+                ctx.workbook.worksheets.getItem
+                var worksheet = ctx.workbook.worksheets.getActiveWorksheet();
+                worksheet.load('id');
+                worksheet.load('name');
                 selectedRange.load('address');
                 selectedRange.load('rowIndex');
                 selectedRange.load('columnIndex');
@@ -357,7 +446,7 @@ var nameSelectedTicker;
                     rowIndex = selectedRange.rowIndex;
                     columnIndex = selectedRange.columnIndex;
 
-                    insertData(value, address, rowIndex, columnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
+                    insertData(value, worksheet.name, worksheet.id, address, rowIndex, columnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
 
                 });
             }).catch(function (error) {
@@ -366,28 +455,35 @@ var nameSelectedTicker;
         }
     }
 
-    function insertData(value, address, rowIndex, columnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker) {
+    function insertData(value, worksheetName, worksheetID, address, rowIndex, columnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker) {
         Excel.run(function (ctx) {
             //a partire dall'address salvato in precedenza, ricavo la cella di partenza in cui copiare il risultato
             var index = address.indexOf("!") + 1;
-            var wb = address.substring(0, index - 1);
+            //var wb = address.substring(0, index - 1);
+            var wb = worksheetName;
             var cell = address.substring(index);
 
             //utilizzando rowIndex, columnIndex e le dimensioni del dato ottenuto ricavo l'address dell'ultima cella in cui andro' ad incollare i dati
             var sheet = ctx.workbook.worksheets.getItem(wb);
+
             var firstCellRange = sheet.getRange(cell + ":" + cell);
             var firstCell = sheet.getCell(rowIndex, columnIndex);
             var lastCell = sheet.getCell(rowIndex + rowNum - 1, columnIndex + 7 - 1);
-            var secondLastRowFirstColumn = sheet.getCell(rowIndex + rowNum - 2, columnIndex);
+            var secondRowFirstColumn = sheet.getCell(rowIndex + 1, columnIndex);
+            var secondRowSecondColumn = sheet.getCell(rowIndex + 1, columnIndex + 1);
             var lastRowFirstColumn = sheet.getCell(rowIndex + rowNum - 1, columnIndex);
+            var lastRowFifthColumn = sheet.getCell(rowIndex + rowNum - 1, columnIndex + 5 - 1);
+
             lastCell.load('address');
-            secondLastRowFirstColumn.load('address');
+            secondRowFirstColumn.load('address');
+            secondRowSecondColumn.load('address');
             lastRowFirstColumn.load('address');
+            lastRowFifthColumn.load('address');
 
             return ctx.sync().then(function () {
                 if (!isUpdated) {
                     var table = ctx.workbook.tables.add(cell + ":" + lastCell.address, true);
-                    if (language == "it-IT") {
+                    /*if (language == "it-IT") {
                         table.columns.getItemAt(0).getRange().numberFormat = "dd/MM/yyyy";
                     } else {
                         table.columns.getItemAt(0).getRange().numberFormat = "MM/dd/yyyy";
@@ -395,18 +491,28 @@ var nameSelectedTicker;
                     table.columns.getItemAt(1).getRange().numberFormat = "€ #,##0.00";
                     table.columns.getItemAt(2).getRange().numberFormat = "€ #,##0.00";
                     table.columns.getItemAt(3).getRange().numberFormat = "€ #,##0.00";
-                    table.columns.getItemAt(4).getRange().numberFormat = "€ #,##0.00";
+                    table.columns.getItemAt(4).getRange().numberFormat = "€ #,##0.00";*/
                 }
 
                 //creo il range con i dati calcolati prima ed incollo il risultato ottenuto dal server
                 var range = sheet.getRange(cell + ":" + lastCell.address);
                 range.values = value;
 
+                //modifico i formati del range (data la prima colonna e le 4 colonne successive numero con due cifre dopo la virgola)
+                if (language == "it-IT") {
+                    sheet.getRange(secondRowFirstColumn.address + ":" + lastRowFirstColumn.address).numberFormat = "dd/MM/yyyy";
+                } else {
+                    sheet.getRange(secondRowFirstColumn.address + ":" + lastRowFirstColumn.address).numberFormat = "MM/dd/yyyy";
+                }
+                sheet.getRange(secondRowSecondColumn.address + ":" + lastRowFifthColumn.address).numberFormat = "€ #,##0.00";
+
+                //metto bold solo l'ultima riga nel caso volessi seguire
                 if (toFollow) {
-                    sheet.getRange(secondLastRowFirstColumn.address + ":" + lastCell.address).format.font.bold = false;
+                    sheet.getRange(cell + ":" + lastCell.address).format.font.bold = false;
                     sheet.getRange(lastRowFirstColumn.address + ":" + lastCell.address).format.font.bold = true;
                 }
 
+                //salvo i metadati
                 if (toFollow && !isUpdated) {
                     listStockFollow.push({
                         address: address,
@@ -414,7 +520,8 @@ var nameSelectedTicker;
                         columnIndex: columnIndex,
                         epoch_from: objStockData.begin_date,
                         nameTicker: nameTicker,
-                        ticker: objStockData.ticker
+                        ticker: objStockData.ticker,
+                        worksheet_id: worksheetID
                     });
 
                     tableStockView();
@@ -441,9 +548,55 @@ var nameSelectedTicker;
             var savedAddress = stock.address;
             var savedRowIndex = stock.rowIndex;
             var savedColumnIndex = stock.columnIndex;
+            var savedWorksheetID = stock.worksheet_id;
 
-            retrieveStockData(nameTicker, ticker, epoch_from, epoch_to, true, true, savedAddress, savedRowIndex, savedColumnIndex);
+            retrieveStockData(nameTicker, ticker, epoch_from, epoch_to, true, true, savedAddress, savedRowIndex, savedColumnIndex, savedWorksheetID);
         }
+    }
+
+    function compareWorksheetID() {
+        var loadWorksheetsID = JSON.parse(Office.context.document.settings.get("worksheetsID"));
+
+        Excel.run(function (ctx) {
+            var worksheets = ctx.workbook.worksheets;
+            worksheets.load('items');
+            return ctx.sync().then(function () {
+                for (var i = 0; i < worksheets.items.length; i++) {
+                    var ws = worksheets.items[i];
+                    ws.load("id");
+                }
+                ctx.sync().then(function () {
+                    for (var i = 0; i < worksheets.items.length; i++) {
+                        var current_id = worksheets.items[i].id;
+                        var saved_id = loadWorksheetsID[i];
+
+                        if (current_id != saved_id) {
+                            for (var j = 0; j < listStockFollow.length; j++) {
+                                var worksheet_id = listStockFollow[j].worksheet_id;
+
+                                if (worksheet_id == saved_id) {
+                                    listStockFollow[j].worksheet_id = current_id;
+                                }
+                            }
+                        }
+                    }
+
+                    Office.context.document.settings.set('worksheetsID', JSON.stringify(listWorksheetID));
+                    Office.context.document.settings.saveAsync(function (asyncResult) {
+                        if (asyncResult.status == Office.AsyncResultStatus.Failed) {
+                            console.log("Error: " + asyncResult.error.message);
+                        } else {
+                            console.log("Settings saved");
+                        }
+                    });
+                })
+            });
+        }).catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
     }
 
     function tableStockView() {
@@ -478,7 +631,7 @@ var nameSelectedTicker;
             } else {
                 console.log("Settings saved");
             }
-        })
+        });
     }
 
     function removeStockView(event) {
