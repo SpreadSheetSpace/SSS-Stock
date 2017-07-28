@@ -38,6 +38,9 @@ var nameSelectedTicker;
             $("#from").val(strToday);
             $("#to").val(strToday);
 
+            document.getElementById("infoTab").style.borderRight = "none";
+            document.getElementById("homeTabSSS").style.display = "block";
+
             getListStockViews();
 
             if (Office.context.document.settings.get("stockViews") != null) {
@@ -56,14 +59,43 @@ var nameSelectedTicker;
 
             $('#ok').click(getStockData);
 
+            $('#homeTab').click(clickTab);
+            $('#followedTab').click(clickTab);
+            $('#infoTab').click(clickTab);
+
             $('#refresh-tickers').click(getListStockViews);
         });
     };
 
+    function clickTab(evt) {
+        // Declare all variables
+        var tabName = this.id;
+        var i, tabcontent, tablinks;
+
+        // Get all elements with class="tabcontent" and hide them
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+
+        // Get all elements with class="tablinks" and remove the class "active"
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        // Show the current tab, and add an "active" class to the button that opened the tab
+        document.getElementById(tabName+"SSS").style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+
     function setHtmlLanguage() {
         if (language == "it-IT") {
+            document.getElementById("homeTab").innerHTML = "Home";
+            document.getElementById("followedTab").innerHTML = "Seguite";
+            document.getElementById("infoTab").innerHTML = "Info";
             document.getElementById("stock_title").innerHTML = "Il servizio di borsa ti permette di monitorare l'andamento dei titoli della Borsa di Milano (i dati riportati sono ritardati di 15 minuti). Seleziona il titolo che ti interessa monitorare, la finestra temporale di interesse e premi \"OK\" per ricevere i dati nella cella che hai selezionato sul tuo foglio di lavoro.";
-            document.getElementById("refresh-tickers").innerHTML = "Aggiorna lista ticker";
+            document.getElementById("refresh-tickers").innerHTML = "Aggiorna lista titoli";
             document.getElementById("label_warning_1").innerHTML = "Ogni operazione come:";
             document.getElementById("label_warning_li1").innerHTML = "inserire/rimuovere righe/colonne;";
             document.getElementById("label_warning_li2").innerHTML = "taglia/incolla;";
@@ -74,8 +106,11 @@ var nameSelectedTicker;
             document.getElementById("to_follow_label").innerHTML = "segui, aggiornamenti ogni 15 minuti.";
             document.getElementById("follow_title").innerHTML = "Viste di borsa seguite:";
         } else {
+            document.getElementById("homeTab").innerHTML = "Home";
+            document.getElementById("followedTab").innerHTML = "Followed";
+            document.getElementById("infoTab").innerHTML = "Info";
             document.getElementById("stock_title").innerHTML = "The Stock Exchange service allows you to track the progress of Milan Stock Exchange tickers (the data is delayed by 15 minutes). Select the title that interests you, the time window of interest and click \"OK\" to receive the data in the selected cell on your worksheet.";
-            document.getElementById("refresh-tickers").innerHTML = "Refresh tickers list";
+            document.getElementById("refresh-tickers").innerHTML = "Refresh titles list";
             document.getElementById("label_warning_1").innerHTML = "Any operations like:";
             document.getElementById("label_warning_li1").innerHTML = "insert/remove rows/columns;";
             document.getElementById("label_warning_li2").innerHTML = "cut/paste;";
@@ -271,9 +306,26 @@ var nameSelectedTicker;
         var from = $("#from").val();
         var to = $("#to").val();
 
+        var epoch_today = "";
+        var epoch_from = "";
+        var epoch_to = "";
+
+        var dateTodayParts = strToday.split("/");
+        var dateFromParts = from.split("/");
+        var dateToParts = to.split("/");
+        if (language == "it-IT") {
+            epoch_today = (new Date(Date.UTC(dateTodayParts[2], dateTodayParts[1] - 1, dateTodayParts[0], 0, 0, 0))).getTime();
+            epoch_from = (new Date(Date.UTC(dateFromParts[2], dateFromParts[1] - 1, dateFromParts[0], 0, 0, 0))).getTime();
+            epoch_to = (new Date(Date.UTC(dateToParts[2], dateToParts[1] - 1, dateToParts[0], 19, 0, 0))).getTime();
+        } else {
+            epoch_today = (new Date(Date.UTC(dateTodayParts[2], dateTodayParts[0] - 1, dateTodayParts[1], 0, 0, 0))).getTime();
+            epoch_from = (new Date(Date.UTC(dateFromParts[2], dateFromParts[0] - 1, dateFromParts[1], 0, 0, 0))).getTime();
+            epoch_to = (new Date(Date.UTC(dateToParts[2], dateToParts[0] - 1, dateToParts[1], 19, 0, 0))).getTime();
+        }
+
         if (!(platform.toLocaleLowerCase().indexOf("mac") > -1)) {
             nameSelectedTicker = $("#input-list-stock").val();
-            selectedTicker = stockMap[nameSelectedTicker];
+            selectedTicker = stockMap[nameSelectedTicker.toUpperCase()];
         }
 
         if (nameSelectedTicker == "") {
@@ -288,25 +340,13 @@ var nameSelectedTicker;
             } else {
                 app.showNotification('Ticker not found, select a correct ticker from the menu');
             }
-        } else if (from == strToday) {
+        } else if (epoch_from > epoch_today) {
             if (language == "it-IT") {
                 app.showNotification('Non sono presenti valori nel periodo selezionato per il titolo ' + nameSelectedTicker);
             } else {
                 app.showNotification('No values for the selected period for title ' + nameSelectedTicker);
             }
         } else {
-            var epoch_from = "";
-            var epoch_to = "";
-            if (language == "it-IT") {
-                var dateFromParts = from.split("/");
-                var dateToParts = to.split("/");
-
-                epoch_from = (new Date(dateFromParts[2], dateFromParts[1] - 1, dateFromParts[0])).getTime();
-                epoch_to = (new Date(dateToParts[2], dateToParts[1] - 1, dateToParts[0])).getTime();
-            } else {
-                epoch_from = (new Date(from)).getTime();
-                epoch_to = (new Date(to)).getTime();
-            }
 
             var to_type = document.querySelector('input[name = "date_to"]:checked').id;
 
@@ -390,20 +430,32 @@ var nameSelectedTicker;
             v[5] = d.totQuantity;
             if (i == data.length - 1) {
                 var now = new Date();
-                var hourMinuteNow = getHourMinuteDate(now);
-                if (toFollow) {
-                    if (language == "it-IT") {
-                        v[6] = 'Valori aggiornati alle ' + hourMinuteNow;
+                var day = now.getUTCDay();
+                var hour = now.getUTCHours();
+
+                if (day != 0 && day != 6) {
+                    if (hour >= 7 && hour <= 17) {
+                        var hourMinuteNow = getHourMinuteDate(now);
+                        if (toFollow) {
+                            if (language == "it-IT") {
+                                v[6] = 'Valori aggiornati alle ' + hourMinuteNow;
+                            } else {
+                                v[6] = 'Values updated at ' + hourMinuteNow;
+                            }
+                        } else {
+                            if (language == "it-IT") {
+                                v[6] = 'Valori rilevati alle ' + hourMinuteNow;
+                            } else {
+                                v[6] = 'Values observed at ' + hourMinuteNow;
+                            }
+                        }
                     } else {
-                        v[6] = 'Values updated at ' + hourMinuteNow;
+                        v[6] = '';
                     }
                 } else {
-                    if (language == "it-IT") {
-                        v[6] = 'Valori rilevati alle ' + hourMinuteNow;
-                    } else {
-                        v[6] = 'Values observed at ' + hourMinuteNow;
-                    }
+                    v[6] = '';
                 }
+
             } else {
                 v[6] = '';
             }
@@ -419,15 +471,12 @@ var nameSelectedTicker;
                 worksheet.load('name');
 
                 return ctx.sync().then(function () {
-
                     insertData(value, worksheet.name, savedWorksheetID, savedAddress, savedRowIndex, savedColumnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
 
                 });
             }).catch(function (error) {
                 console.log("Error: " + error);
             });
-            //insertData(value, savedWorksheetID, savedAddress, savedRowIndex, savedColumnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
-            //insertData(value, savedAddress, savedRowIndex, savedColumnIndex, rowNum, isUpdated, toFollow, objStockData, nameTicker);
 
         } else {
             var address, rowIndex, columnIndex;
@@ -605,10 +654,12 @@ var nameSelectedTicker;
             var table = '<table id="tableView">\n<tbody>\n';
             for (var i = 0; i < listStockFollow.length; i++) {
                 var listStockFollow_i = listStockFollow[i];
-                table += '<tr id="tr">\n<td>' + listStockFollow_i.nameTicker + ' (' + getFormatDate(new Date(listStockFollow_i.epoch_from)) + ')\t' + '</td>\n';
+                
                 if (language == "it-IT") {
+                    table += '<tr id="tr">\n<td>' + listStockFollow_i.nameTicker + ' (da ' + getFormatDate(new Date(listStockFollow_i.epoch_from)) + ')\t' + '</td>\n';
                     table += '<td>' + '<button id="remove_' + i + '">Blocca aggiornamenti</button>' + '</td>\n</tr>\n';
                 } else {
+                    table += '<tr id="tr">\n<td>' + listStockFollow_i.nameTicker + ' (from ' + getFormatDate(new Date(listStockFollow_i.epoch_from)) + ')\t' + '</td>\n';
                     table += '<td>' + '<button id="remove_' + i + '">Stop updating</button>' + '</td>\n</tr>\n';
                 }
             }

@@ -29,6 +29,12 @@
         </div>
     </div>
     <div id="content-main">
+        <p></p>
+        <div class="tab">
+            <button class="tablinks active" id="homeTab">Home</button>
+            <button class="tablinks" id="followedTab">Followed</button>
+            <button class="tablinks" id="infoTab">Info</button>
+        </div>
         <div class="padding">
             <!--<p><h3>Login</h3></p>
             <p>Mail:</p>
@@ -40,18 +46,7 @@
 
             <p><a id="a_site" target="_blank" href="https://www.spreadsheetspace.net/orchestrator/">Sign up here...</a></p>
             <br><br>-->
-            <div id="content-sss">
-                <p id="stock_title">The Stock Exchange service allows you to track the progress of Milan Stock Exchange tickers (the data is delayed by 15 minutes). Select the title that interests you, the time window of interest and click "OK" to receive the data in the selected cell on your worksheet.</p>
-                <br>
-                <p>
-                    <label id="label_warning_1">Any operations like:</label>
-                        <ul>
-                            <li><label id="label_warning_li1">insert/remove rows/columns;</label></li>
-                            <li><label id="label_warning_li2">cut/paste;</label></li>
-                            <li><label id="label_warning_li3">edting;</label></li>
-                        </ul>
-                        <label id="label_warning_2">that involved one or more stock element imported, may compromise the data updates.</label>
-                </p>
+            <div id="homeTabSSS" class="tabcontent">
                 <div id="div-list-stock"></div>
                 <button id="refresh-tickers">Refresh Tickers</button>
                 <p id="p_from">from:</p>
@@ -60,8 +55,23 @@
                 <input type="radio" id="to_oneshot" name="date_to" checked="true"><input id='to' class='datepicker'><br>
                 <input type="radio" id="to_follow" name="date_to"><label id="to_follow_label">follow, values updated every 15 minutes.</label>
                 <p><button id="ok">OK</button></p>
+            </div>
+            <div id="followedTabSSS" class="tabcontent">
                 <p id="follow_title">Followed stock views:</p>
                 <div id="div-follow-stock"></div>
+            </div>
+            <div id="infoTabSSS" class="tabcontent">
+                <p id="stock_title">The Stock Exchange service allows you to track the progress of Milan Stock Exchange tickers (the data is delayed by 15 minutes). Select the title that interests you, the time window of interest and click "OK" to receive the data in the selected cell on your worksheet.</p>
+                <br>
+                <p>
+                    <label id="label_warning_1">Any operations like:</label>
+                    <ul>
+                        <li><label id="label_warning_li1">insert/remove rows/columns;</label></li>
+                        <li><label id="label_warning_li2">cut/paste;</label></li>
+                        <li><label id="label_warning_li3">edting;</label></li>
+                    </ul>
+                    <label id="label_warning_2">that involved one or more stock element imported, may compromise the data updates.</label>
+                </p>
             </div>
          </div>
     </div>

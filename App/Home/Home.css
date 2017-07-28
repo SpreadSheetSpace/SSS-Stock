@@ -1,2 +1,43 @@
 ﻿/* Page-specific styling */
+/* Style the tab */
+div.tab {
+    display: table;
+    width:100%;
+    overflow: hidden;
+    background-color: #ffffff;
+}
 
+/* Style the buttons inside the tab */
+div.tab button {
+    display:table-cell;
+    width:33.333%;
+    background-color: inherit;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    background-color: #ffffff;
+}
+
+/* Change background color of buttons on hover */
+div.tab button:hover {
+    color: #ffffff;
+    background-color: #badbf2;
+}
+
+/* Create an active/current tablink class */
+div.tab button.active {
+    color: #ffffff;
+    background-color: #499acc;
+}
+
+/* Style the tab content */
+.tabcontent {
+    display: none;
+    border-top: none;
+}
