@@ -50,7 +50,7 @@ var nameSelectedTicker;
             }
 
             if (Office.context.document.settings.get("worksheetsID") != null) {
-                compareWorksheetID()
+                compareWorksheetID();
             }
 
             checkWorksheetChange();
@@ -615,6 +615,7 @@ var nameSelectedTicker;
                     ws.load("id");
                 }
                 ctx.sync().then(function () {
+                    var toUpdated = false;
                     for (var i = 0; i < worksheets.items.length; i++) {
                         var current_id = worksheets.items[i].id;
                         var saved_id = loadWorksheetsID[i];
@@ -625,9 +626,14 @@ var nameSelectedTicker;
 
                                 if (worksheet_id == saved_id) {
                                     listStockFollow[j].worksheet_id = current_id;
+                                    toUpdated = true;
                                 }
                             }
                         }
+                    }
+
+                    if (toUpdated) {
+                        updateFollowStock();
                     }
 
                     Office.context.document.settings.set('worksheetsID', JSON.stringify(listWorksheetID));
