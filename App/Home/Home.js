@@ -662,19 +662,40 @@ var nameSelectedTicker;
                 var listStockFollow_i = listStockFollow[i];
                 
                 if (language == "it-IT") {
-                    table += '<tr id="tr">\n<td>' + listStockFollow_i.nameTicker + ' (da ' + getFormatDate(new Date(listStockFollow_i.epoch_from)) + ')\t' + '</td>\n';
-                    table += '<td>' + '<button id="remove_' + i + '">Blocca aggiornamenti</button>' + '</td>\n</tr>\n';
+                    table += '<tr id="tr">\n<td>' + listStockFollow_i.nameTicker + '</br>(da ' + getFormatDate(new Date(listStockFollow_i.epoch_from)) + ')\t' + '</td>\n';
+                    table += '<td>' + '</td>\n';
+                    table += '<td>' + '</td>\n';
+                    table += '<td>' + '</td>\n';
+                    table += '<td>' + '<button id="remove_' + i + '" title="Blocca aggiornamenti"><img src="../../Images/stop.png" style="width:16px;height:16px"></button>' + '</td>\n';
+                    table += '<td>' + '<button id="update_' + i + '" title="Aggiorna"><img src="../../Images/update.png" style="width:16px;height:16px"></button>' + '</td>\n';
+                    table += '<td>' + '<button id="select_' + i + '" title="Seleziona"><img src="../../Images/select.png" style="width:16px;height:16px"></button>' + '</td>\n</tr>\n';
                 } else {
-                    table += '<tr id="tr">\n<td>' + listStockFollow_i.nameTicker + ' (from ' + getFormatDate(new Date(listStockFollow_i.epoch_from)) + ')\t' + '</td>\n';
-                    table += '<td>' + '<button id="remove_' + i + '">Stop updating</button>' + '</td>\n</tr>\n';
+                    table += '<tr id="tr">\n<td>' + listStockFollow_i.nameTicker + '</br>(from ' + getFormatDate(new Date(listStockFollow_i.epoch_from)) + ')\t' + '</td>\n';
+                    table += '<td>' + '</td>\n';
+                    table += '<td>' + '</td>\n';
+                    table += '<td>' + '</td>\n';
+                    table += '<td>' + '<button id="remove_' + i + '" title="Stop updating"><img src="../../Images/stop.png" style="width:16px;height:16px"></button>' + '</td>\n';
+                    table += '<td>' + '<button id="update_' + i + '" title="Update"><img src="../../Images/update.png" style="width:16px;height:16px"></button>' + '</td>\n';
+                    table += '<td>' + '<button id="select_' + i + '" title="Select"><img src="../../Images/select.png" style="width:16px;height:16px"></button>' + '</td>\n</tr>\n';
+
                 }
             }
-            table += '</tbody>\n</table>';
+            table += '</tbody>\n</table>\n';
+            table += '<p></p>\n';
+            if (language == "it-IT") {
+                table += '<button id="updateAll">Aggiorna tutto</button>' + '\n';
+            } else {
+                table += '<button id="updateAll">Update All</button>' + '\n';
+            }
+
             document.getElementById("div-follow-stock").innerHTML = table;
 
+            $('#updateAll').on('click', updateFollowStock);
             for (var i = 0; i < listStockFollow.length; i++) {
                 var listStockFollow_i = listStockFollow[i];
                 $('#remove_' + i).on('click', { index: i }, removeStockView);
+                $('#update_' + i).on('click', { index: i }, updateStockView);
+                $('#select_' + i).on('click', { index: i }, selectStockView);
             }
         } else {
             var table = "";
@@ -697,6 +718,68 @@ var nameSelectedTicker;
         listStockFollow.splice(index, 1);
 
         tableStockView();
+    }
+
+    function updateStockView(event) {
+        var index = event.data.index;
+        var stock = listStockFollow[index];
+
+        var epoch_from = stock.epoch_from;
+        var epoch_to = (new Date()).getTime();
+        var nameTicker = stock.nameTicker;
+        var ticker = stock.ticker;
+        var savedAddress = stock.address;
+        var savedRowIndex = stock.rowIndex;
+        var savedColumnIndex = stock.columnIndex;
+        var savedWorksheetID = stock.worksheet_id;
+
+        retrieveStockData(nameTicker, ticker, epoch_from, epoch_to, true, true, savedAddress, savedRowIndex, savedColumnIndex, savedWorksheetID);
+    }
+
+    function selectStockView(event) {
+        var index = event.data.index;
+        var stock = listStockFollow[index];
+
+        var savedAddress = stock.address;
+        var savedWorksheetID = stock.worksheet_id;
+
+        Excel.run(function (ctx) {
+            var selectedRange = ctx.workbook.getSelectedRange();
+            var worksheet = ctx.workbook.worksheets.getItem(savedWorksheetID)
+            worksheet.load('name');
+
+            return ctx.sync().then(function () {
+                Excel.run(function (ctx) {
+                    //a partire dall'address salvato in precedenza, ricavo la cella di partenza in cui copiare il risultato
+                    var index = savedAddress.indexOf("!") + 1;
+                    //var wb = address.substring(0, index - 1);
+                    var wb = worksheet.name;
+                    var cell = savedAddress.substring(index);
+
+                    var movedAddress = wb + "!" + cell;
+
+                    Office.context.document.goToByIdAsync(movedAddress, Office.GoToType.NamedItem, function (asyncResult) {
+                        if (asyncResult.status == "failed") {
+                            console.log("Error: " + asyncResult.error.message);
+                        } else {
+                            console.log("Selected new stock");
+                        }
+                    });
+
+                    return ctx.sync();
+                }).catch(function (error) {
+                    if (language == "it-IT") {
+                        app.showNotification("L'intervallo selezionato contiene filtri o tabelle");
+                    } else {
+                        app.showNotification("The selected range contains filters or tables");
+                    }
+                    console.log("Error: " + error);
+                });
+
+            });
+        }).catch(function (error) {
+            console.log("Error: " + error);
+        });
     }
 
     function ObjStockData(ticker, begin_date, end_date) {
