@@ -201,7 +201,7 @@ var nameSelectedTicker;
                     for (var i = 0; i < listStockFollow_size; i++) {
                         var stock_id = listStockFollow[i].worksheet_id;
 
-                        if (listWorksheetID.indexOf(stock_id) <= -1) {
+                        if (listWorksheetID.indexOf(stock_id) < 0) {
                             listStockToDelete.push(i);
                         }
                     }
@@ -209,10 +209,10 @@ var nameSelectedTicker;
                     if (listStockToDelete.length > 0) {
                         var listStock_size = listStockToDelete.length;
 
-                        for (var i=0; i < listStock_size; i++) {
+                        for (var i = 0; i < listStock_size; i++) {
                             var id = listStockToDelete[i];
 
-                            listStockFollow.splice(id-i, 1);
+                            listStockFollow.splice(id - i, 1);
                         }
 
                         tableStockView();
@@ -635,15 +635,6 @@ var nameSelectedTicker;
                     if (toUpdated) {
                         updateFollowStock();
                     }
-
-                    Office.context.document.settings.set('worksheetsID', JSON.stringify(listWorksheetID));
-                    Office.context.document.settings.saveAsync(function (asyncResult) {
-                        if (asyncResult.status == Office.AsyncResultStatus.Failed) {
-                            console.log("Error: " + asyncResult.error.message);
-                        } else {
-                            console.log("Settings saved");
-                        }
-                    });
                 })
             });
         }).catch(function (error) {
@@ -656,7 +647,6 @@ var nameSelectedTicker;
 
     function tableStockView() {
         if (listStockFollow.length > 0) {
-            //var table = '<table id="tableView">\n<thead>\n<tr>\n<th>Name</th>\n<th></th>\n</tr>\n</thead>\n<tbody>\n';
             var table = '<table id="tableView">\n<tbody>\n';
             for (var i = 0; i < listStockFollow.length; i++) {
                 var listStockFollow_i = listStockFollow[i];
