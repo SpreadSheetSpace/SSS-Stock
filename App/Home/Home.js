@@ -49,10 +49,11 @@ var nameSelectedTicker;
                 updateFollowStock();
             }
 
-            if (Office.context.document.settings.get("worksheetsID") != null) {
+            /*if (Office.context.document.settings.get("worksheetsID") != null) {
                 compareWorksheetID();
-            }
+            }*/
 
+            compareWorksheetID();
             checkWorksheetChange();
 
             setInterval(function () { updateFollowStock(); }, 15 * 60 * 1000); //15 * 60 * 1000
@@ -229,7 +230,8 @@ var nameSelectedTicker;
 
     function checkWorksheetChange() {
         Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, function () {
-            checkWorksheetIdToRemove();
+            //checkWorksheetIdToRemove();
+            compareWorksheetID();
         });
     }
 
@@ -606,43 +608,58 @@ var nameSelectedTicker;
     function compareWorksheetID() {
         var loadWorksheetsID = JSON.parse(Office.context.document.settings.get("worksheetsID"));
 
-        Excel.run(function (ctx) {
-            var worksheets = ctx.workbook.worksheets;
-            worksheets.load('items');
-            return ctx.sync().then(function () {
-                for (var i = 0; i < worksheets.items.length; i++) {
-                    var ws = worksheets.items[i];
-                    ws.load("id");
-                }
-                ctx.sync().then(function () {
-                    var toUpdated = false;
+        if (loadWorksheetsID != null) {
+            Excel.run(function (ctx) {
+                var worksheets = ctx.workbook.worksheets;
+                worksheets.load('items');
+                return ctx.sync().then(function () {
                     for (var i = 0; i < worksheets.items.length; i++) {
-                        var current_id = worksheets.items[i].id;
-                        var saved_id = loadWorksheetsID[i];
+                        var ws = worksheets.items[i];
+                        ws.load("id");
+                    }
+                    ctx.sync().then(function () {
+                        if (worksheets.items.length == loadWorksheetsID.length) {
+                            var toUpdated = false;
+                            for (var i = 0; i < worksheets.items.length; i++) {
+                                var current_id = worksheets.items[i].id;
+                                var saved_id = loadWorksheetsID[i];
 
-                        if (current_id != saved_id) {
-                            for (var j = 0; j < listStockFollow.length; j++) {
-                                var worksheet_id = listStockFollow[j].worksheet_id;
+                                if (current_id != saved_id) {
+                                    for (var j = 0; j < listStockFollow.length; j++) {
+                                        var worksheet_id = listStockFollow[j].worksheet_id;
 
-                                if (worksheet_id == saved_id) {
-                                    listStockFollow[j].worksheet_id = current_id;
-                                    toUpdated = true;
+                                        if (worksheet_id == saved_id) {
+                                            listStockFollow[j].worksheet_id = current_id;
+                                            toUpdated = true;
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
 
-                    if (toUpdated) {
-                        updateFollowStock();
-                    }
-                })
+                            if (toUpdated) {
+                                Office.context.document.settings.set('stockViews', JSON.stringify(listStockFollow));
+                                Office.context.document.settings.saveAsync(function (asyncResult) {
+                                    if (asyncResult.status == Office.AsyncResultStatus.Failed) {
+                                        console.log("Error: " + asyncResult.error.message);
+                                    } else {
+                                        console.log("Settings saved");
+                                    }
+                                });
+                                updateFollowStock();
+                            }
+                        }
+
+                    })
+                });
+            }).catch(function (error) {
+                console.log("Error: " + error);
+                if (error instanceof OfficeExtension.Error) {
+                    console.log("Debug info: " + JSON.stringify(error.debugInfo));
+                }
             });
-        }).catch(function (error) {
-            console.log("Error: " + error);
-            if (error instanceof OfficeExtension.Error) {
-                console.log("Debug info: " + JSON.stringify(error.debugInfo));
-            }
-        });
+        } else {
+            checkWorksheetIdToRemove();
+        }
     }
 
     function tableStockView() {
